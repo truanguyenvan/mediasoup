@@ -38,7 +38,7 @@ namespace RTC
 				  this->windowSizeMs,
 				  this->windowItems);
 
-				BufferItem& oldestItem = this->buffer[this->oldestItemIndex];
+				BufferItem& oldestItem = buffer[this->oldestItemIndex];
 				this->totalCount -= oldestItem.count;
 				oldestItem.count = 0u;
 				oldestItem.time  = 0u;
@@ -47,14 +47,14 @@ namespace RTC
 			}
 
 			// Set the newest item.
-			BufferItem& item = this->buffer[this->newestItemIndex];
+			BufferItem& item = buffer[this->newestItemIndex];
 			item.count       = size;
 			item.time        = nowMs;
 		}
 		else
 		{
 			// Update the newest item.
-			BufferItem& item = this->buffer[this->newestItemIndex];
+			BufferItem& item = buffer[this->newestItemIndex];
 			item.count += size;
 		}
 
@@ -114,7 +114,7 @@ namespace RTC
 
 		while (this->oldestItemStartTime < newoldestTime)
 		{
-			BufferItem& oldestItem = this->buffer[this->oldestItemIndex];
+			BufferItem& oldestItem = buffer[this->oldestItemIndex];
 			this->totalCount -= oldestItem.count;
 			oldestItem.count = 0u;
 			oldestItem.time  = 0u;
@@ -122,7 +122,7 @@ namespace RTC
 			if (++this->oldestItemIndex >= this->windowItems)
 				this->oldestItemIndex = 0;
 
-			const BufferItem& newOldestItem = this->buffer[this->oldestItemIndex];
+			const BufferItem& newOldestItem = buffer[this->oldestItemIndex];
 			this->oldestItemStartTime       = newOldestItem.time;
 		}
 	}

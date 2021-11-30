@@ -1,28 +1,23 @@
 "use strict";
+var __classPrivateFieldSet = (this && this.__classPrivateFieldSet) || function (receiver, privateMap, value) {
+    if (!privateMap.has(receiver)) {
+        throw new TypeError("attempted to set private field on non-instance");
+    }
+    privateMap.set(receiver, value);
+    return value;
+};
+var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (receiver, privateMap) {
+    if (!privateMap.has(receiver)) {
+        throw new TypeError("attempted to get private field on non-instance");
+    }
+    return privateMap.get(receiver);
+};
+var _internal, _data, _channel, _payloadChannel, _closed, _appData, _paused, _score, _observer;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Producer = void 0;
 const Logger_1 = require("./Logger");
 const EnhancedEventEmitter_1 = require("./EnhancedEventEmitter");
 const logger = new Logger_1.Logger('Producer');
 class Producer extends EnhancedEventEmitter_1.EnhancedEventEmitter {
-    // Internal data.
-    #internal;
-    // Producer data.
-    #data;
-    // Channel instance.
-    #channel;
-    // PayloadChannel instance.
-    #payloadChannel;
-    // Closed flag.
-    #closed = false;
-    // Custom app data.
-    #appData;
-    // Paused flag.
-    #paused = false;
-    // Current score.
-    #score = [];
-    // Observer instance.
-    #observer = new EnhancedEventEmitter_1.EnhancedEventEmitter();
     /**
      * @private
      * @emits transportclose
@@ -33,44 +28,62 @@ class Producer extends EnhancedEventEmitter_1.EnhancedEventEmitter {
      */
     constructor({ internal, data, channel, payloadChannel, appData, paused }) {
         super();
+        // Internal data.
+        _internal.set(this, void 0);
+        // Producer data.
+        _data.set(this, void 0);
+        // Channel instance.
+        _channel.set(this, void 0);
+        // PayloadChannel instance.
+        _payloadChannel.set(this, void 0);
+        // Closed flag.
+        _closed.set(this, false);
+        // Custom app data.
+        _appData.set(this, void 0);
+        // Paused flag.
+        _paused.set(this, false);
+        // Current score.
+        _score.set(this, []);
+        // Observer instance.
+        _observer.set(this, new EnhancedEventEmitter_1.EnhancedEventEmitter());
         logger.debug('constructor()');
-        this.#internal = internal;
-        this.#data = data;
-        this.#channel = channel;
-        this.#payloadChannel = payloadChannel;
-        this.#appData = appData;
-        this.#paused = paused;
+        __classPrivateFieldSet(this, _internal, internal);
+        __classPrivateFieldSet(this, _data, data);
+        __classPrivateFieldSet(this, _channel, channel);
+        __classPrivateFieldSet(this, _payloadChannel, payloadChannel);
+        __classPrivateFieldSet(this, _appData, appData);
+        __classPrivateFieldSet(this, _paused, paused);
         this.handleWorkerNotifications();
     }
     /**
      * Producer id.
      */
     get id() {
-        return this.#internal.producerId;
+        return __classPrivateFieldGet(this, _internal).producerId;
     }
     /**
      * Whether the Producer is closed.
      */
     get closed() {
-        return this.#closed;
+        return __classPrivateFieldGet(this, _closed);
     }
     /**
      * Media kind.
      */
     get kind() {
-        return this.#data.kind;
+        return __classPrivateFieldGet(this, _data).kind;
     }
     /**
      * RTP parameters.
      */
     get rtpParameters() {
-        return this.#data.rtpParameters;
+        return __classPrivateFieldGet(this, _data).rtpParameters;
     }
     /**
      * Producer type.
      */
     get type() {
-        return this.#data.type;
+        return __classPrivateFieldGet(this, _data).type;
     }
     /**
      * Consumable RTP parameters.
@@ -78,25 +91,25 @@ class Producer extends EnhancedEventEmitter_1.EnhancedEventEmitter {
      * @private
      */
     get consumableRtpParameters() {
-        return this.#data.consumableRtpParameters;
+        return __classPrivateFieldGet(this, _data).consumableRtpParameters;
     }
     /**
      * Whether the Producer is paused.
      */
     get paused() {
-        return this.#paused;
+        return __classPrivateFieldGet(this, _paused);
     }
     /**
      * Producer score list.
      */
     get score() {
-        return this.#score;
+        return __classPrivateFieldGet(this, _score);
     }
     /**
      * App custom data.
      */
     get appData() {
-        return this.#appData;
+        return __classPrivateFieldGet(this, _appData);
     }
     /**
      * Invalid setter.
@@ -115,31 +128,31 @@ class Producer extends EnhancedEventEmitter_1.EnhancedEventEmitter {
      * @emits trace - (trace: ProducerTraceEventData)
      */
     get observer() {
-        return this.#observer;
+        return __classPrivateFieldGet(this, _observer);
     }
     /**
      * @private
      * Just for testing purposes.
      */
     get channelForTesting() {
-        return this.#channel;
+        return __classPrivateFieldGet(this, _channel);
     }
     /**
      * Close the Producer.
      */
     close() {
-        if (this.#closed)
+        if (__classPrivateFieldGet(this, _closed))
             return;
         logger.debug('close()');
-        this.#closed = true;
+        __classPrivateFieldSet(this, _closed, true);
         // Remove notification subscriptions.
-        this.#channel.removeAllListeners(this.#internal.producerId);
-        this.#payloadChannel.removeAllListeners(this.#internal.producerId);
-        this.#channel.request('producer.close', this.#internal)
+        __classPrivateFieldGet(this, _channel).removeAllListeners(__classPrivateFieldGet(this, _internal).producerId);
+        __classPrivateFieldGet(this, _payloadChannel).removeAllListeners(__classPrivateFieldGet(this, _internal).producerId);
+        __classPrivateFieldGet(this, _channel).request('producer.close', __classPrivateFieldGet(this, _internal))
             .catch(() => { });
         this.emit('@close');
         // Emit observer event.
-        this.#observer.safeEmit('close');
+        __classPrivateFieldGet(this, _observer).safeEmit('close');
     }
     /**
      * Transport was closed.
@@ -147,54 +160,54 @@ class Producer extends EnhancedEventEmitter_1.EnhancedEventEmitter {
      * @private
      */
     transportClosed() {
-        if (this.#closed)
+        if (__classPrivateFieldGet(this, _closed))
             return;
         logger.debug('transportClosed()');
-        this.#closed = true;
+        __classPrivateFieldSet(this, _closed, true);
         // Remove notification subscriptions.
-        this.#channel.removeAllListeners(this.#internal.producerId);
-        this.#payloadChannel.removeAllListeners(this.#internal.producerId);
+        __classPrivateFieldGet(this, _channel).removeAllListeners(__classPrivateFieldGet(this, _internal).producerId);
+        __classPrivateFieldGet(this, _payloadChannel).removeAllListeners(__classPrivateFieldGet(this, _internal).producerId);
         this.safeEmit('transportclose');
         // Emit observer event.
-        this.#observer.safeEmit('close');
+        __classPrivateFieldGet(this, _observer).safeEmit('close');
     }
     /**
      * Dump Producer.
      */
     async dump() {
         logger.debug('dump()');
-        return this.#channel.request('producer.dump', this.#internal);
+        return __classPrivateFieldGet(this, _channel).request('producer.dump', __classPrivateFieldGet(this, _internal));
     }
     /**
      * Get Producer stats.
      */
     async getStats() {
         logger.debug('getStats()');
-        return this.#channel.request('producer.getStats', this.#internal);
+        return __classPrivateFieldGet(this, _channel).request('producer.getStats', __classPrivateFieldGet(this, _internal));
     }
     /**
      * Pause the Producer.
      */
     async pause() {
         logger.debug('pause()');
-        const wasPaused = this.#paused;
-        await this.#channel.request('producer.pause', this.#internal);
-        this.#paused = true;
+        const wasPaused = __classPrivateFieldGet(this, _paused);
+        await __classPrivateFieldGet(this, _channel).request('producer.pause', __classPrivateFieldGet(this, _internal));
+        __classPrivateFieldSet(this, _paused, true);
         // Emit observer event.
         if (!wasPaused)
-            this.#observer.safeEmit('pause');
+            __classPrivateFieldGet(this, _observer).safeEmit('pause');
     }
     /**
      * Resume the Producer.
      */
     async resume() {
         logger.debug('resume()');
-        const wasPaused = this.#paused;
-        await this.#channel.request('producer.resume', this.#internal);
-        this.#paused = false;
+        const wasPaused = __classPrivateFieldGet(this, _paused);
+        await __classPrivateFieldGet(this, _channel).request('producer.resume', __classPrivateFieldGet(this, _internal));
+        __classPrivateFieldSet(this, _paused, false);
         // Emit observer event.
         if (wasPaused)
-            this.#observer.safeEmit('resume');
+            __classPrivateFieldGet(this, _observer).safeEmit('resume');
     }
     /**
      * Enable 'trace' event.
@@ -202,7 +215,7 @@ class Producer extends EnhancedEventEmitter_1.EnhancedEventEmitter {
     async enableTraceEvent(types = []) {
         logger.debug('enableTraceEvent()');
         const reqData = { types };
-        await this.#channel.request('producer.enableTraceEvent', this.#internal, reqData);
+        await __classPrivateFieldGet(this, _channel).request('producer.enableTraceEvent', __classPrivateFieldGet(this, _internal), reqData);
     }
     /**
      * Send RTP packet (just valid for Producers created on a DirectTransport).
@@ -211,18 +224,18 @@ class Producer extends EnhancedEventEmitter_1.EnhancedEventEmitter {
         if (!Buffer.isBuffer(rtpPacket)) {
             throw new TypeError('rtpPacket must be a Buffer');
         }
-        this.#payloadChannel.notify('producer.send', this.#internal, undefined, rtpPacket);
+        __classPrivateFieldGet(this, _payloadChannel).notify('producer.send', __classPrivateFieldGet(this, _internal), undefined, rtpPacket);
     }
     handleWorkerNotifications() {
-        this.#channel.on(this.#internal.producerId, (event, data) => {
+        __classPrivateFieldGet(this, _channel).on(__classPrivateFieldGet(this, _internal).producerId, (event, data) => {
             switch (event) {
                 case 'score':
                     {
                         const score = data;
-                        this.#score = score;
+                        __classPrivateFieldSet(this, _score, score);
                         this.safeEmit('score', score);
                         // Emit observer event.
-                        this.#observer.safeEmit('score', score);
+                        __classPrivateFieldGet(this, _observer).safeEmit('score', score);
                         break;
                     }
                 case 'videoorientationchange':
@@ -230,7 +243,7 @@ class Producer extends EnhancedEventEmitter_1.EnhancedEventEmitter {
                         const videoOrientation = data;
                         this.safeEmit('videoorientationchange', videoOrientation);
                         // Emit observer event.
-                        this.#observer.safeEmit('videoorientationchange', videoOrientation);
+                        __classPrivateFieldGet(this, _observer).safeEmit('videoorientationchange', videoOrientation);
                         break;
                     }
                 case 'trace':
@@ -238,7 +251,7 @@ class Producer extends EnhancedEventEmitter_1.EnhancedEventEmitter {
                         const trace = data;
                         this.safeEmit('trace', trace);
                         // Emit observer event.
-                        this.#observer.safeEmit('trace', trace);
+                        __classPrivateFieldGet(this, _observer).safeEmit('trace', trace);
                         break;
                     }
                 default:
@@ -250,3 +263,4 @@ class Producer extends EnhancedEventEmitter_1.EnhancedEventEmitter {
     }
 }
 exports.Producer = Producer;
+_internal = new WeakMap(), _data = new WeakMap(), _channel = new WeakMap(), _payloadChannel = new WeakMap(), _closed = new WeakMap(), _appData = new WeakMap(), _paused = new WeakMap(), _score = new WeakMap(), _observer = new WeakMap();

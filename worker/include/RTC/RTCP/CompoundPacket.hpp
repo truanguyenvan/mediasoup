@@ -15,8 +15,7 @@ namespace RTC
 		class CompoundPacket
 		{
 		public:
-			using UniquePtr = std::unique_ptr<CompoundPacket>;
-			static UniquePtr Create();
+			CompoundPacket() = default;
 
 		public:
 			const uint8_t* GetData() const
@@ -47,21 +46,11 @@ namespace RTC
 			bool HasReceiverReferenceTime()
 			{
 				return std::any_of(
-				  this->xrPacket.Begin(),
-				  this->xrPacket.End(),
-				  [](const ExtendedReportBlock* report)
-				  { return report->GetType() == ExtendedReportBlock::Type::RRT; });
+				  this->xrPacket.Begin(), this->xrPacket.End(), [](const ExtendedReportBlock* report) {
+					  return report->GetType() == ExtendedReportBlock::Type::RRT;
+				  });
 			}
 			void Serialize(uint8_t* data);
-
-		private:
-			// Use `CompoundPacket::Create()` instead
-			CompoundPacket() = default;
-			// Use `CompoundPacket::ReturnIntoPool()` instead
-			~CompoundPacket() = default;
-
-			friend struct std::default_delete<RTC::RTCP::CompoundPacket>;
-			static void ReturnIntoPool(CompoundPacket* packet);
 
 		private:
 			uint8_t* header{ nullptr };
@@ -74,15 +63,4 @@ namespace RTC
 	} // namespace RTCP
 } // namespace RTC
 
-namespace std
-{
-	template<>
-	struct default_delete<RTC::RTCP::CompoundPacket>
-	{
-		void operator()(RTC::RTCP::CompoundPacket* ptr) const
-		{
-			RTC::RTCP::CompoundPacket::ReturnIntoPool(ptr);
-		}
-	};
-}; // namespace std
 #endif

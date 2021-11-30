@@ -4,7 +4,7 @@
 #include "common.hpp"
 #include "Utils.hpp"
 #include "RTC/Codecs/PayloadDescriptorHandler.hpp"
-#include <absl/container/flat_hash_map.h>
+#include <map>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
@@ -13,6 +13,8 @@ using json = nlohmann::json;
 
 namespace RTC
 {
+	// Max RTP length.
+	constexpr size_t RtpBufferSize{ 65536u };
 	// Max MTU size.
 	constexpr size_t MtuSize{ 1500u };
 	// MID header extension max length (just used when setting/updating MID
@@ -22,8 +24,6 @@ namespace RTC
 	class RtpPacket
 	{
 	public:
-		using RtpPacketBuffer = std::array<uint8_t, MtuSize + 100>;
-
 		/* Struct for RTP header. */
 		struct Header
 		{
@@ -131,75 +131,8 @@ namespace RTC
 			);
 			// clang-format on
 		}
-		class SharedPtr
-		{
-		public:
-			RtpPacket* get()
-			{
-				return ptr;
-			}
-			explicit SharedPtr(RtpPacket* p) : ptr(p)
-			{
-			}
-			SharedPtr(std::nullptr_t p) : ptr(p)
-			{
-			}
-			SharedPtr(const SharedPtr& p) : ptr(p.ptr)
-			{
-				if (ptr)
-				{
-					ptr->IncRefCount();
-				}
-			}
-			SharedPtr(SharedPtr&& p) : ptr(p.ptr)
-			{
-				p.ptr = nullptr;
-			}
-			SharedPtr& operator=(SharedPtr&& p)
-			{
-				ptr   = p.ptr;
-				p.ptr = nullptr;
-				return *this;
-			}
-			SharedPtr& operator=(const SharedPtr& p)
-			{
-				if (p.ptr)
-				{
-					p.ptr->IncRefCount();
-				}
-				reset(p.ptr);
-				return *this;
-			}
-			~SharedPtr()
-			{
-				reset();
-			}
-			explicit operator bool() const
-			{
-				return ptr;
-			}
-			void reset(RtpPacket* p = nullptr)
-			{
-				if (ptr)
-				{
-					ptr->DecRefCount();
-				}
-				ptr = p;
-			}
-			RtpPacket& operator*() const noexcept
-			{
-				return *ptr;
-			}
-			RtpPacket* operator->() const noexcept
-			{
-				return ptr;
-			}
 
-		private:
-			RtpPacket* ptr;
-		};
-
-		static RtpPacket::SharedPtr Parse(const uint8_t* data, size_t len);
+		static RtpPacket* Parse(const uint8_t* data, size_t len);
 
 	private:
 		RtpPacket(
@@ -210,10 +143,9 @@ namespace RTC
 		  uint8_t payloadPadding,
 		  size_t size);
 
-		// Use `RtpPacket::DecRefCount()` instead
+	public:
 		~RtpPacket();
 
-	public:
 		void Dump() const;
 
 		void FillJson(json& jsonObject) const;
@@ -541,11 +473,9 @@ namespace RTC
 			}
 			else if (HasOneByteExtensions())
 			{
-				if (id > 14)
-					return false;
+				auto it = this->mapOneByteExtensions.find(id);
 
-				// `-1` because we have 14 elements total 0..=13 and `id` is in the range 1..=14
-				return this->mapOneByteExtensions[id - 1] != nullptr;
+				return it != this->mapOneByteExtensions.end();
 			}
 			else if (HasTwoBytesExtensions())
 			{
@@ -578,14 +508,12 @@ namespace RTC
 			}
 			else if (HasOneByteExtensions())
 			{
-				if (id > 14)
+				auto it = this->mapOneByteExtensions.find(id);
+
+				if (it == this->mapOneByteExtensions.end())
 					return nullptr;
 
-				// `-1` because we have 14 elements total 0..=13 and `id` is in the range 1..=14
-				auto* extension = this->mapOneByteExtensions[id - 1];
-
-				if (!extension)
-					return nullptr;
+				auto* extension = it->second;
 
 				// In One-Byte extensions value length 0 means 1.
 				len = extension->len + 1;
@@ -658,7 +586,7 @@ namespace RTC
 			return this->payloadDescriptorHandler->IsKeyFrame();
 		}
 
-		RtpPacket::SharedPtr Clone() const;
+		RtpPacket* Clone(const uint8_t* buffer) const;
 
 		void RtxEncode(uint8_t payloadType, uint32_t ssrc, uint16_t seq);
 
@@ -676,16 +604,6 @@ namespace RTC
 		void ShiftPayload(size_t payloadOffset, size_t shift, bool expand = true);
 
 	private:
-		friend class SharedPtr;
-
-		// Increase reference count for the packet.
-		void IncRefCount();
-
-		// Decrease reference count for the packet, packet will be removed when reference count reaches zero.
-		void DecRefCount();
-
-		// Return packet into object pool for future reuse of memory allocation.
-		static void ReturnIntoPool(RtpPacket* packet);
 		void ParseExtensions();
 
 	private:
@@ -693,11 +611,8 @@ namespace RTC
 		Header* header{ nullptr };
 		uint8_t* csrcList{ nullptr };
 		HeaderExtension* headerExtension{ nullptr };
-		// There might be up to one-byte header extensions
-		// (https://datatracker.ietf.org/doc/html/rfc5285#section-4.2), which is why we'll just allocate
-		// a static array for them
-		OneByteExtension* mapOneByteExtensions[14];
-		absl::flat_hash_map<uint8_t, TwoBytesExtension*> mapTwoBytesExtensions;
+		std::map<uint8_t, OneByteExtension*> mapOneByteExtensions;
+		std::map<uint8_t, TwoBytesExtension*> mapTwoBytesExtensions;
 		uint8_t midExtensionId{ 0u };
 		uint8_t ridExtensionId{ 0u };
 		uint8_t rridExtensionId{ 0u };
@@ -712,11 +627,7 @@ namespace RTC
 		uint8_t payloadPadding{ 0u };
 		size_t size{ 0u }; // Full size of the packet in bytes.
 		// Codecs
-		std::shared_ptr<Codecs::PayloadDescriptorHandler> payloadDescriptorHandler;
-		// Buffer where this packet is allocated, can be `nullptr` if packet was parsed from externally
-		// provided buffer.
-		RtpPacketBuffer* buffer{ nullptr };
-		size_t referenceCount{ 1 };
+		std::unique_ptr<Codecs::PayloadDescriptorHandler> payloadDescriptorHandler;
 	};
 } // namespace RTC
 

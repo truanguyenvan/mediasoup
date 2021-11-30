@@ -409,15 +409,19 @@ impl Inner {
                         producer_id: self.producer_id,
                     },
                 };
-                let weak_producer = self.weak_producer.clone();
+                let producer = self.weak_producer.upgrade();
+                let transport = self.transport.clone();
 
                 self.executor
                     .spawn(async move {
-                        if weak_producer.upgrade().is_some() {
+                        if producer.is_some() {
                             if let Err(error) = channel.request(request).await {
                                 error!("consumer closing failed on drop: {}", error);
                             }
                         }
+
+                        drop(producer);
+                        drop(transport);
                     })
                     .detach();
             }

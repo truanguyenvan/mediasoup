@@ -1,6 +1,19 @@
 "use strict";
+var __classPrivateFieldSet = (this && this.__classPrivateFieldSet) || function (receiver, privateMap, value) {
+    if (!privateMap.has(receiver)) {
+        throw new TypeError("attempted to set private field on non-instance");
+    }
+    privateMap.set(receiver, value);
+    return value;
+};
+var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (receiver, privateMap) {
+    if (!privateMap.has(receiver)) {
+        throw new TypeError("attempted to get private field on non-instance");
+    }
+    return privateMap.get(receiver);
+};
+var _data, _closed, _appData, _getRouterRtpCapabilities, _producers, _cnameForProducers, _nextMidForConsumers, _sctpStreamIds, _nextSctpStreamId, _observer;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Transport = void 0;
 const uuid_1 = require("uuid");
 const Logger_1 = require("./Logger");
 const EnhancedEventEmitter_1 = require("./EnhancedEventEmitter");
@@ -12,42 +25,6 @@ const DataProducer_1 = require("./DataProducer");
 const DataConsumer_1 = require("./DataConsumer");
 const logger = new Logger_1.Logger('Transport');
 class Transport extends EnhancedEventEmitter_1.EnhancedEventEmitter {
-    // Internal data.
-    internal;
-    // Transport data. This is set by the subclass.
-    #data;
-    // Channel instance.
-    channel;
-    // PayloadChannel instance.
-    payloadChannel;
-    // Close flag.
-    #closed = false;
-    // Custom app data.
-    #appData;
-    // Method to retrieve Router RTP capabilities.
-    #getRouterRtpCapabilities;
-    // Method to retrieve a Producer.
-    getProducerById;
-    // Method to retrieve a DataProducer.
-    getDataProducerById;
-    // Producers map.
-    #producers = new Map();
-    // Consumers map.
-    consumers = new Map();
-    // DataProducers map.
-    dataProducers = new Map();
-    // DataConsumers map.
-    dataConsumers = new Map();
-    // RTCP CNAME for Producers.
-    #cnameForProducers;
-    // Next MID for Consumers. It's converted into string when used.
-    #nextMidForConsumers = 0;
-    // Buffer with available SCTP stream ids.
-    #sctpStreamIds;
-    // Next SCTP stream id.
-    #nextSctpStreamId = 0;
-    // Observer instance.
-    #observer = new EnhancedEventEmitter_1.EnhancedEventEmitter();
     /**
      * @private
      * @interface
@@ -60,13 +37,39 @@ class Transport extends EnhancedEventEmitter_1.EnhancedEventEmitter {
      */
     constructor({ internal, data, channel, payloadChannel, appData, getRouterRtpCapabilities, getProducerById, getDataProducerById }) {
         super();
+        // Transport data. This is set by the subclass.
+        _data.set(this, void 0);
+        // Close flag.
+        _closed.set(this, false);
+        // Custom app data.
+        _appData.set(this, void 0);
+        // Method to retrieve Router RTP capabilities.
+        _getRouterRtpCapabilities.set(this, void 0);
+        // Producers map.
+        _producers.set(this, new Map());
+        // Consumers map.
+        this.consumers = new Map();
+        // DataProducers map.
+        this.dataProducers = new Map();
+        // DataConsumers map.
+        this.dataConsumers = new Map();
+        // RTCP CNAME for Producers.
+        _cnameForProducers.set(this, void 0);
+        // Next MID for Consumers. It's converted into string when used.
+        _nextMidForConsumers.set(this, 0);
+        // Buffer with available SCTP stream ids.
+        _sctpStreamIds.set(this, void 0);
+        // Next SCTP stream id.
+        _nextSctpStreamId.set(this, 0);
+        // Observer instance.
+        _observer.set(this, new EnhancedEventEmitter_1.EnhancedEventEmitter());
         logger.debug('constructor()');
         this.internal = internal;
-        this.#data = data;
+        __classPrivateFieldSet(this, _data, data);
         this.channel = channel;
         this.payloadChannel = payloadChannel;
-        this.#appData = appData;
-        this.#getRouterRtpCapabilities = getRouterRtpCapabilities;
+        __classPrivateFieldSet(this, _appData, appData);
+        __classPrivateFieldSet(this, _getRouterRtpCapabilities, getRouterRtpCapabilities);
         this.getProducerById = getProducerById;
         this.getDataProducerById = getDataProducerById;
     }
@@ -80,13 +83,13 @@ class Transport extends EnhancedEventEmitter_1.EnhancedEventEmitter {
      * Whether the Transport is closed.
      */
     get closed() {
-        return this.#closed;
+        return __classPrivateFieldGet(this, _closed);
     }
     /**
      * App custom data.
      */
     get appData() {
-        return this.#appData;
+        return __classPrivateFieldGet(this, _appData);
     }
     /**
      * Invalid setter.
@@ -104,7 +107,7 @@ class Transport extends EnhancedEventEmitter_1.EnhancedEventEmitter {
      * @emits newdataconsumer - (dataProducer: DataProducer)
      */
     get observer() {
-        return this.#observer;
+        return __classPrivateFieldGet(this, _observer);
     }
     /**
      * @private
@@ -117,22 +120,22 @@ class Transport extends EnhancedEventEmitter_1.EnhancedEventEmitter {
      * Close the Transport.
      */
     close() {
-        if (this.#closed)
+        if (__classPrivateFieldGet(this, _closed))
             return;
         logger.debug('close()');
-        this.#closed = true;
+        __classPrivateFieldSet(this, _closed, true);
         // Remove notification subscriptions.
         this.channel.removeAllListeners(this.internal.transportId);
         this.payloadChannel.removeAllListeners(this.internal.transportId);
         this.channel.request('transport.close', this.internal)
             .catch(() => { });
         // Close every Producer.
-        for (const producer of this.#producers.values()) {
+        for (const producer of __classPrivateFieldGet(this, _producers).values()) {
             producer.transportClosed();
             // Must tell the Router.
             this.emit('@producerclose', producer);
         }
-        this.#producers.clear();
+        __classPrivateFieldGet(this, _producers).clear();
         // Close every Consumer.
         for (const consumer of this.consumers.values()) {
             consumer.transportClosed();
@@ -152,7 +155,7 @@ class Transport extends EnhancedEventEmitter_1.EnhancedEventEmitter {
         this.dataConsumers.clear();
         this.emit('@close');
         // Emit observer event.
-        this.#observer.safeEmit('close');
+        __classPrivateFieldGet(this, _observer).safeEmit('close');
     }
     /**
      * Router was closed.
@@ -161,20 +164,20 @@ class Transport extends EnhancedEventEmitter_1.EnhancedEventEmitter {
      * @virtual
      */
     routerClosed() {
-        if (this.#closed)
+        if (__classPrivateFieldGet(this, _closed))
             return;
         logger.debug('routerClosed()');
-        this.#closed = true;
+        __classPrivateFieldSet(this, _closed, true);
         // Remove notification subscriptions.
         this.channel.removeAllListeners(this.internal.transportId);
         this.payloadChannel.removeAllListeners(this.internal.transportId);
         // Close every Producer.
-        for (const producer of this.#producers.values()) {
+        for (const producer of __classPrivateFieldGet(this, _producers).values()) {
             producer.transportClosed();
             // NOTE: No need to tell the Router since it already knows (it has
             // been closed in fact).
         }
-        this.#producers.clear();
+        __classPrivateFieldGet(this, _producers).clear();
         // Close every Consumer.
         for (const consumer of this.consumers.values()) {
             consumer.transportClosed();
@@ -194,7 +197,7 @@ class Transport extends EnhancedEventEmitter_1.EnhancedEventEmitter {
         this.dataConsumers.clear();
         this.safeEmit('routerclose');
         // Emit observer event.
-        this.#observer.safeEmit('close');
+        __classPrivateFieldGet(this, _observer).safeEmit('close');
     }
     /**
      * Dump Transport.
@@ -243,7 +246,7 @@ class Transport extends EnhancedEventEmitter_1.EnhancedEventEmitter {
      */
     async produce({ id = undefined, kind, rtpParameters, paused = false, keyFrameRequestDelay, appData = {} }) {
         logger.debug('produce()');
-        if (id && this.#producers.has(id))
+        if (id && __classPrivateFieldGet(this, _producers).has(id))
             throw new TypeError(`a Producer with same id "${id}" already exists`);
         else if (!['audio', 'video'].includes(kind))
             throw new TypeError(`invalid kind "${kind}"`);
@@ -262,24 +265,24 @@ class Transport extends EnhancedEventEmitter_1.EnhancedEventEmitter {
         if (this.constructor.name !== 'PipeTransport') {
             // If CNAME is given and we don't have yet a CNAME for Producers in this
             // Transport, take it.
-            if (!this.#cnameForProducers && rtpParameters.rtcp && rtpParameters.rtcp.cname) {
-                this.#cnameForProducers = rtpParameters.rtcp.cname;
+            if (!__classPrivateFieldGet(this, _cnameForProducers) && rtpParameters.rtcp && rtpParameters.rtcp.cname) {
+                __classPrivateFieldSet(this, _cnameForProducers, rtpParameters.rtcp.cname);
             }
             // Otherwise if we don't have yet a CNAME for Producers and the RTP parameters
             // do not include CNAME, create a random one.
-            else if (!this.#cnameForProducers) {
-                this.#cnameForProducers = (0, uuid_1.v4)().substr(0, 8);
+            else if (!__classPrivateFieldGet(this, _cnameForProducers)) {
+                __classPrivateFieldSet(this, _cnameForProducers, uuid_1.v4().substr(0, 8));
             }
             // Override Producer's CNAME.
             rtpParameters.rtcp = rtpParameters.rtcp || {};
-            rtpParameters.rtcp.cname = this.#cnameForProducers;
+            rtpParameters.rtcp.cname = __classPrivateFieldGet(this, _cnameForProducers);
         }
-        const routerRtpCapabilities = this.#getRouterRtpCapabilities();
+        const routerRtpCapabilities = __classPrivateFieldGet(this, _getRouterRtpCapabilities).call(this);
         // This may throw.
         const rtpMapping = ortc.getProducerRtpParametersMapping(rtpParameters, routerRtpCapabilities);
         // This may throw.
         const consumableRtpParameters = ortc.getConsumableRtpParameters(kind, rtpParameters, routerRtpCapabilities, rtpMapping);
-        const internal = { ...this.internal, producerId: id || (0, uuid_1.v4)() };
+        const internal = { ...this.internal, producerId: id || uuid_1.v4() };
         const reqData = { kind, rtpParameters, rtpMapping, keyFrameRequestDelay, paused };
         const status = await this.channel.request('transport.produce', internal, reqData);
         const data = {
@@ -296,14 +299,14 @@ class Transport extends EnhancedEventEmitter_1.EnhancedEventEmitter {
             appData,
             paused
         });
-        this.#producers.set(producer.id, producer);
+        __classPrivateFieldGet(this, _producers).set(producer.id, producer);
         producer.on('@close', () => {
-            this.#producers.delete(producer.id);
+            __classPrivateFieldGet(this, _producers).delete(producer.id);
             this.emit('@producerclose', producer);
         });
         this.emit('@newproducer', producer);
         // Emit observer event.
-        this.#observer.safeEmit('newproducer', producer);
+        __classPrivateFieldGet(this, _observer).safeEmit('newproducer', producer);
         return producer;
     }
     /**
@@ -312,6 +315,7 @@ class Transport extends EnhancedEventEmitter_1.EnhancedEventEmitter {
      * @virtual
      */
     async consume({ producerId, rtpCapabilities, paused = false, mid, preferredLayers, pipe = false, appData = {} }) {
+        var _a;
         logger.debug('consume()');
         if (!producerId || typeof producerId !== 'string')
             throw new TypeError('missing producerId');
@@ -332,15 +336,15 @@ class Transport extends EnhancedEventEmitter_1.EnhancedEventEmitter {
                 rtpParameters.mid = mid;
             }
             else {
-                rtpParameters.mid = `${this.#nextMidForConsumers++}`;
+                rtpParameters.mid = `${__classPrivateFieldSet(this, _nextMidForConsumers, (_a = +__classPrivateFieldGet(this, _nextMidForConsumers)) + 1), _a}`;
                 // We use up to 8 bytes for MID (string).
-                if (this.#nextMidForConsumers === 100000000) {
-                    logger.error(`consume() | reaching max MID value "${this.#nextMidForConsumers}"`);
-                    this.#nextMidForConsumers = 0;
+                if (__classPrivateFieldGet(this, _nextMidForConsumers) === 100000000) {
+                    logger.error(`consume() | reaching max MID value "${__classPrivateFieldGet(this, _nextMidForConsumers)}"`);
+                    __classPrivateFieldSet(this, _nextMidForConsumers, 0);
                 }
             }
         }
-        const internal = { ...this.internal, consumerId: (0, uuid_1.v4)(), producerId };
+        const internal = { ...this.internal, consumerId: uuid_1.v4(), producerId };
         const reqData = {
             kind: producer.kind,
             rtpParameters,
@@ -370,7 +374,7 @@ class Transport extends EnhancedEventEmitter_1.EnhancedEventEmitter {
         consumer.on('@close', () => this.consumers.delete(consumer.id));
         consumer.on('@producerclose', () => this.consumers.delete(consumer.id));
         // Emit observer event.
-        this.#observer.safeEmit('newconsumer', consumer);
+        __classPrivateFieldGet(this, _observer).safeEmit('newconsumer', consumer);
         return consumer;
     }
     /**
@@ -396,7 +400,7 @@ class Transport extends EnhancedEventEmitter_1.EnhancedEventEmitter {
                 logger.warn('produceData() | sctpStreamParameters are ignored when producing data on a DirectTransport');
             }
         }
-        const internal = { ...this.internal, dataProducerId: id || (0, uuid_1.v4)() };
+        const internal = { ...this.internal, dataProducerId: id || uuid_1.v4() };
         const reqData = {
             type,
             sctpStreamParameters,
@@ -418,7 +422,7 @@ class Transport extends EnhancedEventEmitter_1.EnhancedEventEmitter {
         });
         this.emit('@newdataproducer', dataProducer);
         // Emit observer event.
-        this.#observer.safeEmit('newdataproducer', dataProducer);
+        __classPrivateFieldGet(this, _observer).safeEmit('newdataproducer', dataProducer);
         return dataProducer;
     }
     /**
@@ -451,7 +455,7 @@ class Transport extends EnhancedEventEmitter_1.EnhancedEventEmitter {
                 sctpStreamParameters.maxRetransmits = maxRetransmits;
             // This may throw.
             sctpStreamId = this.getNextSctpStreamId();
-            this.#sctpStreamIds[sctpStreamId] = 1;
+            __classPrivateFieldGet(this, _sctpStreamIds)[sctpStreamId] = 1;
             sctpStreamParameters.streamId = sctpStreamId;
         }
         // If this is a DirectTransport, sctpStreamParameters must not be used.
@@ -464,7 +468,7 @@ class Transport extends EnhancedEventEmitter_1.EnhancedEventEmitter {
             }
         }
         const { label, protocol } = dataProducer;
-        const internal = { ...this.internal, dataConsumerId: (0, uuid_1.v4)(), dataProducerId };
+        const internal = { ...this.internal, dataConsumerId: uuid_1.v4(), dataProducerId };
         const reqData = {
             type,
             sctpStreamParameters,
@@ -482,16 +486,16 @@ class Transport extends EnhancedEventEmitter_1.EnhancedEventEmitter {
         this.dataConsumers.set(dataConsumer.id, dataConsumer);
         dataConsumer.on('@close', () => {
             this.dataConsumers.delete(dataConsumer.id);
-            if (this.#sctpStreamIds)
-                this.#sctpStreamIds[sctpStreamId] = 0;
+            if (__classPrivateFieldGet(this, _sctpStreamIds))
+                __classPrivateFieldGet(this, _sctpStreamIds)[sctpStreamId] = 0;
         });
         dataConsumer.on('@dataproducerclose', () => {
             this.dataConsumers.delete(dataConsumer.id);
-            if (this.#sctpStreamIds)
-                this.#sctpStreamIds[sctpStreamId] = 0;
+            if (__classPrivateFieldGet(this, _sctpStreamIds))
+                __classPrivateFieldGet(this, _sctpStreamIds)[sctpStreamId] = 0;
         });
         // Emit observer event.
-        this.#observer.safeEmit('newdataconsumer', dataConsumer);
+        __classPrivateFieldGet(this, _observer).safeEmit('newdataconsumer', dataConsumer);
         return dataConsumer;
     }
     /**
@@ -503,18 +507,18 @@ class Transport extends EnhancedEventEmitter_1.EnhancedEventEmitter {
         await this.channel.request('transport.enableTraceEvent', this.internal, reqData);
     }
     getNextSctpStreamId() {
-        if (!this.#data.sctpParameters ||
-            typeof this.#data.sctpParameters.MIS !== 'number') {
+        if (!__classPrivateFieldGet(this, _data).sctpParameters ||
+            typeof __classPrivateFieldGet(this, _data).sctpParameters.MIS !== 'number') {
             throw new TypeError('missing data.sctpParameters.MIS');
         }
-        const numStreams = this.#data.sctpParameters.MIS;
-        if (!this.#sctpStreamIds)
-            this.#sctpStreamIds = Buffer.alloc(numStreams, 0);
+        const numStreams = __classPrivateFieldGet(this, _data).sctpParameters.MIS;
+        if (!__classPrivateFieldGet(this, _sctpStreamIds))
+            __classPrivateFieldSet(this, _sctpStreamIds, Buffer.alloc(numStreams, 0));
         let sctpStreamId;
-        for (let idx = 0; idx < this.#sctpStreamIds.length; ++idx) {
-            sctpStreamId = (this.#nextSctpStreamId + idx) % this.#sctpStreamIds.length;
-            if (!this.#sctpStreamIds[sctpStreamId]) {
-                this.#nextSctpStreamId = sctpStreamId + 1;
+        for (let idx = 0; idx < __classPrivateFieldGet(this, _sctpStreamIds).length; ++idx) {
+            sctpStreamId = (__classPrivateFieldGet(this, _nextSctpStreamId) + idx) % __classPrivateFieldGet(this, _sctpStreamIds).length;
+            if (!__classPrivateFieldGet(this, _sctpStreamIds)[sctpStreamId]) {
+                __classPrivateFieldSet(this, _nextSctpStreamId, sctpStreamId + 1);
                 return sctpStreamId;
             }
         }
@@ -522,3 +526,4 @@ class Transport extends EnhancedEventEmitter_1.EnhancedEventEmitter {
     }
 }
 exports.Transport = Transport;
+_data = new WeakMap(), _closed = new WeakMap(), _appData = new WeakMap(), _getRouterRtpCapabilities = new WeakMap(), _producers = new WeakMap(), _cnameForProducers = new WeakMap(), _nextMidForConsumers = new WeakMap(), _sctpStreamIds = new WeakMap(), _nextSctpStreamId = new WeakMap(), _observer = new WeakMap();

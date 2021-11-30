@@ -47,6 +47,10 @@ public:
 		return this->closed;
 	}
 	void Write(const uint8_t* data, size_t len);
+	void Write(const std::string& data)
+	{
+		Write(reinterpret_cast<const uint8_t*>(data.c_str()), data.size());
+	}
 
 	/* Callbacks fired by UV events. */
 public:

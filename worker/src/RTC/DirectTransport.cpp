@@ -102,7 +102,7 @@ namespace RTC
 					return;
 				}
 
-				auto packet = RTC::RtpPacket::Parse(data, len);
+				RTC::RtpPacket* packet = RTC::RtpPacket::Parse(data, len);
 
 				if (!packet)
 				{
@@ -112,7 +112,7 @@ namespace RTC
 				}
 
 				// Pass the packet to the parent transport.
-				RTC::Transport::ReceiveRtpPacket(packet.get());
+				RTC::Transport::ReceiveRtpPacket(packet);
 
 				break;
 			}
@@ -166,21 +166,13 @@ namespace RTC
 	}
 
 	void DirectTransport::SendRtpPacket(
-	  RTC::Consumer* consumer,
-	  RTC::RtpPacket* packet,
-	  RTC::Transport::onSendCallback* cb,
-	  RTC::Transport::OnSendCallbackCtx* ctx)
+	  RTC::Consumer* consumer, RTC::RtpPacket* packet, RTC::Transport::onSendCallback* cb)
 	{
 		MS_TRACE();
 
 		if (!consumer)
 		{
 			MS_WARN_TAG(rtp, "cannot send RTP packet not associated to a Consumer");
-
-			if (cb)
-			{
-				(*cb)(false, ctx);
-			}
 
 			return;
 		}
@@ -193,7 +185,8 @@ namespace RTC
 
 		if (cb)
 		{
-			(*cb)(true, ctx);
+			(*cb)(true);
+			delete cb;
 		}
 
 		// Increase send transmission.

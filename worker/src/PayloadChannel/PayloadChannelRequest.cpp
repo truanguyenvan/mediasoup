@@ -12,7 +12,7 @@ namespace PayloadChannel
 	/* Class variables. */
 
 	// clang-format off
-	absl::flat_hash_map<std::string, PayloadChannelRequest::MethodId> PayloadChannelRequest::string2MethodId =
+	std::unordered_map<std::string, PayloadChannelRequest::MethodId> PayloadChannelRequest::string2MethodId =
 	{
 		{ "dataConsumer.send", PayloadChannelRequest::MethodId::DATA_CONSUMER_SEND },
 	};

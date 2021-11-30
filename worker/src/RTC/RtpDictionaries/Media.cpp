@@ -11,13 +11,13 @@ namespace RTC
 	/* Class variables. */
 
 	// clang-format off
-	absl::flat_hash_map<std::string, Media::Kind> Media::string2Kind =
+	std::unordered_map<std::string, Media::Kind> Media::string2Kind =
 	{
 		{ "",      Media::Kind::ALL   },
 		{ "audio", Media::Kind::AUDIO },
 		{ "video", Media::Kind::VIDEO }
 	};
-	absl::flat_hash_map<Media::Kind, std::string> Media::kind2String =
+	std::map<Media::Kind, std::string> Media::kind2String =
 	{
 		{ Media::Kind::ALL,   ""      },
 		{ Media::Kind::AUDIO, "audio" },

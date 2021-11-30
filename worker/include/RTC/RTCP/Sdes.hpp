@@ -3,6 +3,7 @@
 
 #include "common.hpp"
 #include "RTC/RTCP/Packet.hpp"
+#include <map>
 #include <string>
 #include <vector>
 
@@ -76,7 +77,7 @@ namespace RTC
 			std::unique_ptr<uint8_t[]> raw;
 
 		private:
-			static absl::flat_hash_map<SdesItem::Type, std::string> type2String;
+			static std::map<SdesItem::Type, std::string> type2String;
 		};
 
 		class SdesChunk

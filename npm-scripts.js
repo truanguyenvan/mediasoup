@@ -143,7 +143,7 @@ switch (task)
 
 	case 'install-clang-tools':
 	{
-		execute('npm ci --prefix worker/scripts');
+		execute('npm install --prefix worker/scripts');
 
 		break;
 	}

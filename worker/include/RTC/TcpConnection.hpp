@@ -24,11 +24,7 @@ namespace RTC
 		~TcpConnection() override;
 
 	public:
-		void Send(
-		  const uint8_t* data,
-		  size_t len,
-		  RTC::Transport::onSendCallback* cb,
-		  RTC::Transport::OnSendCallbackCtx* ctx);
+		void Send(const uint8_t* data, size_t len, ::TcpConnectionHandler::onSendCallback* cb);
 
 		/* Pure virtual methods inherited from ::TcpConnectionHandler. */
 	public:

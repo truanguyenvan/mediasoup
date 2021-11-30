@@ -26,12 +26,9 @@ test('createWorker() succeeds', async () =>
 	expect(worker).toBeType('object');
 	expect(worker.pid).toBeType('number');
 	expect(worker.closed).toBe(false);
-	expect(worker.died).toBe(false);
 
 	worker.close();
-
 	expect(worker.closed).toBe(true);
-	expect(worker.died).toBe(false);
 
 	// eslint-disable-next-line require-atomic-updates
 	worker = await createWorker(
@@ -47,13 +44,10 @@ test('createWorker() succeeds', async () =>
 	expect(worker).toBeType('object');
 	expect(worker.pid).toBeType('number');
 	expect(worker.closed).toBe(false);
-	expect(worker.died).toBe(false);
 	expect(worker.appData).toEqual({ bar: 456 });
 
 	worker.close();
-
 	expect(worker.closed).toBe(true);
-	expect(worker.died).toBe(false);
 }, 2000);
 
 test('createWorker() with wrong settings rejects with TypeError', async () =>
@@ -163,7 +157,6 @@ test('worker.close() succeeds', async () =>
 
 	expect(onObserverClose).toHaveBeenCalledTimes(1);
 	expect(worker.closed).toBe(true);
-	expect(worker.died).toBe(false);
 }, 2000);
 
 test('Worker emits "died" if worker process died unexpectedly', async () =>
@@ -203,8 +196,6 @@ test('Worker emits "died" if worker process died unexpectedly', async () =>
 
 	expect(onDied).toHaveBeenCalledTimes(1);
 	expect(onObserverClose).toHaveBeenCalledTimes(1);
-	expect(worker.closed).toBe(true);
-	expect(worker.died).toBe(true);
 
 	// eslint-disable-next-line require-atomic-updates
 	worker = await createWorker({ logLevel: 'warn' });
@@ -239,8 +230,6 @@ test('Worker emits "died" if worker process died unexpectedly', async () =>
 
 	expect(onDied).toHaveBeenCalledTimes(1);
 	expect(onObserverClose).toHaveBeenCalledTimes(1);
-	expect(worker.closed).toBe(true);
-	expect(worker.died).toBe(true);
 
 	// eslint-disable-next-line require-atomic-updates
 	worker = await createWorker({ logLevel: 'warn' });
@@ -275,8 +264,6 @@ test('Worker emits "died" if worker process died unexpectedly', async () =>
 
 	expect(onDied).toHaveBeenCalledTimes(1);
 	expect(onObserverClose).toHaveBeenCalledTimes(1);
-	expect(worker.closed).toBe(true);
-	expect(worker.died).toBe(true);
 }, 5000);
 
 test('worker process ignores PIPE, HUP, ALRM, USR1 and USR2 signals', async () =>

@@ -334,11 +334,14 @@ impl Inner {
                         producer_id: self.id,
                     },
                 };
+                let transport = self.transport.clone();
                 self.executor
                     .spawn(async move {
                         if let Err(error) = channel.request(request).await {
                             error!("producer closing failed on drop: {}", error);
                         }
+
+                        drop(transport);
                     })
                     .detach();
             }

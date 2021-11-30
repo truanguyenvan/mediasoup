@@ -152,18 +152,18 @@ namespace RTC
 		// clear it and request a keyframe.
 		uint16_t numNewNacks = seqEnd - seqStart;
 
-		if (static_cast<uint16_t>(this->nackList.size()) + numNewNacks > MaxNackPackets)
+		if (this->nackList.size() + numNewNacks > MaxNackPackets)
 		{
 			// clang-format off
 			while (
 				RemoveNackItemsUntilKeyFrame() &&
-				static_cast<uint16_t>(this->nackList.size()) + numNewNacks > MaxNackPackets
+				this->nackList.size() + numNewNacks > MaxNackPackets
 			)
 			// clang-format on
 			{
 			}
 
-			if (static_cast<uint16_t>(this->nackList.size()) + numNewNacks > MaxNackPackets)
+			if (this->nackList.size() + numNewNacks > MaxNackPackets)
 			{
 				MS_WARN_TAG(
 				  rtx, "NACK list full, clearing it and requesting a key frame [seqEnd:%" PRIu16 "]", seqEnd);

@@ -2,7 +2,7 @@
 #define MS_KEY_FRAME_REQUEST_MANAGER_HPP
 
 #include "handles/Timer.hpp"
-#include <absl/container/flat_hash_map.h>
+#include <map>
 
 namespace RTC
 {
@@ -122,8 +122,8 @@ namespace RTC
 	private:
 		Listener* listener{ nullptr };
 		uint32_t keyFrameRequestDelay{ 0u }; // 0 means disabled.
-		absl::flat_hash_map<uint32_t, PendingKeyFrameInfo*> mapSsrcPendingKeyFrameInfo;
-		absl::flat_hash_map<uint32_t, KeyFrameRequestDelayer*> mapSsrcKeyFrameRequestDelayer;
+		std::map<uint32_t, PendingKeyFrameInfo*> mapSsrcPendingKeyFrameInfo;
+		std::map<uint32_t, KeyFrameRequestDelayer*> mapSsrcKeyFrameRequestDelayer;
 	};
 } // namespace RTC
 

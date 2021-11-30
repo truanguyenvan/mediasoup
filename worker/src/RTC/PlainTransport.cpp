@@ -14,12 +14,12 @@ namespace RTC
 	// NOTE: PlainTransport allows AES_CM_128_HMAC_SHA1_80 and
 	// AES_CM_128_HMAC_SHA1_32 SRTP crypto suites.
 	// clang-format off
-	absl::flat_hash_map<std::string, RTC::SrtpSession::CryptoSuite> PlainTransport::string2SrtpCryptoSuite =
+	std::map<std::string, RTC::SrtpSession::CryptoSuite> PlainTransport::string2SrtpCryptoSuite =
 	{
 		{ "AES_CM_128_HMAC_SHA1_80", RTC::SrtpSession::CryptoSuite::AES_CM_128_HMAC_SHA1_80 },
 		{ "AES_CM_128_HMAC_SHA1_32", RTC::SrtpSession::CryptoSuite::AES_CM_128_HMAC_SHA1_32 }
 	};
-	absl::flat_hash_map<RTC::SrtpSession::CryptoSuite, std::string> PlainTransport::srtpCryptoSuite2String =
+	std::map<RTC::SrtpSession::CryptoSuite, std::string> PlainTransport::srtpCryptoSuite2String =
 	{
 		{ RTC::SrtpSession::CryptoSuite::AES_CM_128_HMAC_SHA1_80, "AES_CM_128_HMAC_SHA1_80" },
 		{ RTC::SrtpSession::CryptoSuite::AES_CM_128_HMAC_SHA1_32, "AES_CM_128_HMAC_SHA1_32" }
@@ -618,10 +618,7 @@ namespace RTC
 	}
 
 	void PlainTransport::SendRtpPacket(
-	  RTC::Consumer* /*consumer*/,
-	  RTC::RtpPacket* packet,
-	  RTC::Transport::onSendCallback* cb,
-	  RTC::Transport::OnSendCallbackCtx* ctx)
+	  RTC::Consumer* /*consumer*/, RTC::RtpPacket* packet, RTC::Transport::onSendCallback* cb)
 	{
 		MS_TRACE();
 
@@ -629,7 +626,8 @@ namespace RTC
 		{
 			if (cb)
 			{
-				(*cb)(false, ctx);
+				(*cb)(false);
+				delete cb;
 			}
 
 			return;
@@ -642,7 +640,8 @@ namespace RTC
 		{
 			if (cb)
 			{
-				(*cb)(false, ctx);
+				(*cb)(false);
+				delete cb;
 			}
 
 			return;
@@ -650,7 +649,7 @@ namespace RTC
 
 		auto len = static_cast<size_t>(intLen);
 
-		this->tuple->Send(data, len, cb, ctx);
+		this->tuple->Send(data, len, cb);
 
 		// Increase send transmission.
 		RTC::Transport::DataSent(len);
@@ -786,7 +785,7 @@ namespace RTC
 
 		if (HasSrtp() && !this->srtpRecvSession->DecryptSrtp(const_cast<uint8_t*>(data), &intLen))
 		{
-			auto packet = RTC::RtpPacket::Parse(data, static_cast<size_t>(intLen));
+			RTC::RtpPacket* packet = RTC::RtpPacket::Parse(data, static_cast<size_t>(intLen));
 
 			if (!packet)
 			{
@@ -800,12 +799,14 @@ namespace RTC
 				  packet->GetSsrc(),
 				  packet->GetPayloadType(),
 				  packet->GetSequenceNumber());
+
+				delete packet;
 			}
 
 			return;
 		}
 
-		auto packet = RTC::RtpPacket::Parse(data, static_cast<size_t>(intLen));
+		RTC::RtpPacket* packet = RTC::RtpPacket::Parse(data, static_cast<size_t>(intLen));
 
 		if (!packet)
 		{
@@ -823,6 +824,8 @@ namespace RTC
 
 				// Remove this SSRC.
 				RecvStreamClosed(packet->GetSsrc());
+
+				delete packet;
 
 				return;
 			}
@@ -858,11 +861,13 @@ namespace RTC
 			// Remove this SSRC.
 			RecvStreamClosed(packet->GetSsrc());
 
+			delete packet;
+
 			return;
 		}
 
 		// Pass the packet to the parent transport.
-		RTC::Transport::ReceiveRtpPacket(packet.get());
+		RTC::Transport::ReceiveRtpPacket(packet);
 	}
 
 	inline void PlainTransport::OnRtcpDataReceived(

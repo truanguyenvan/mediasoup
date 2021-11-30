@@ -24,7 +24,8 @@ namespace RTC
 		  : windowSizeMs(windowSizeMs), scale(scale), windowItems(windowItems)
 		{
 			this->itemSizeMs = std::max(windowSizeMs / windowItems, static_cast<size_t>(1));
-			this->buffer.resize(windowItems);
+
+			Reset();
 		}
 		void Update(size_t size, uint64_t nowMs);
 		uint32_t GetRate(uint64_t nowMs);
@@ -37,8 +38,7 @@ namespace RTC
 		void RemoveOldData(uint64_t nowMs);
 		void Reset()
 		{
-			std::memset(
-			  static_cast<void*>(&this->buffer.front()), 0, sizeof(BufferItem) * this->buffer.size());
+			this->buffer.reset(new BufferItem[this->windowItems]);
 			this->newestItemStartTime = 0u;
 			this->newestItemIndex     = -1;
 			this->oldestItemStartTime = 0u;
@@ -65,7 +65,7 @@ namespace RTC
 		// Item Size (in milliseconds), calculated as: windowSizeMs / windowItems.
 		size_t itemSizeMs{ 0u };
 		// Buffer to keep data.
-		std::vector<BufferItem> buffer;
+		std::unique_ptr<BufferItem[]> buffer;
 		// Time (in milliseconds) for last item in the time window.
 		uint64_t newestItemStartTime{ 0u };
 		// Index for the last item in the time window.

@@ -3,6 +3,7 @@ use crate::worker::channel::BufferMessagesGuard;
 use crate::worker::{Channel, PayloadChannel, WorkerId};
 use async_executor::Executor;
 use async_fs::File;
+use async_oneshot::Receiver;
 use std::ffi::CString;
 use std::mem;
 use std::os::raw::{c_char, c_int};
@@ -45,22 +46,20 @@ fn pipe() -> [c_int; 2] {
 pub(super) struct WorkerRunResult {
     pub(super) channel: Channel,
     pub(super) payload_channel: PayloadChannel,
+    pub(super) status_receiver: Receiver<Result<(), ExitError>>,
     pub(super) buffer_worker_messages_guard: BufferMessagesGuard,
 }
 
-pub(super) fn run_worker_with_channels<OE>(
+pub(super) fn run_worker_with_channels(
     id: WorkerId,
     executor: Arc<Executor<'static>>,
     args: Vec<String>,
-    on_exit: OE,
-) -> WorkerRunResult
-where
-    OE: FnOnce(Result<(), ExitError>) + Send + 'static,
-{
+) -> WorkerRunResult {
     let [producer_fd_read, producer_fd_write] = pipe();
     let [consumer_fd_read, consumer_fd_write] = pipe();
     let [producer_payload_fd_read, producer_payload_fd_write] = pipe();
     let [consumer_payload_fd_read, consumer_payload_fd_write] = pipe();
+    let (mut status_sender, status_receiver) = async_oneshot::oneshot();
 
     let producer_file = unsafe { File::from_raw_fd(producer_fd_write) };
     let consumer_file = unsafe { File::from_raw_fd(consumer_fd_read) };
@@ -97,7 +96,7 @@ where
                 )
             };
 
-            on_exit(match status_code {
+            let _ = status_sender.send(match status_code {
                 0 => Ok(()),
                 1 => Err(ExitError::Generic),
                 42 => Err(ExitError::Settings),
@@ -109,6 +108,7 @@ where
     WorkerRunResult {
         channel,
         payload_channel,
+        status_receiver,
         buffer_worker_messages_guard,
     }
 }

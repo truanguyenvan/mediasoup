@@ -11,7 +11,7 @@ namespace PayloadChannel
 	/* Class variables. */
 
 	// clang-format off
-	absl::flat_hash_map<std::string, Notification::EventId> Notification::string2EventId =
+	std::unordered_map<std::string, Notification::EventId> Notification::string2EventId =
 	{
 		{ "transport.sendRtcp", Notification::EventId::TRANSPORT_SEND_RTCP },
 		{ "producer.send",      Notification::EventId::PRODUCER_SEND       },

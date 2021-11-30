@@ -9,13 +9,9 @@
 
 namespace RTC
 {
-	thread_local static Utils::ObjectPool<RtpPacket> RtpPacketPool;
-	// Memory to hold the cloned packet (with extra space for RTX encoding).
-	thread_local static Utils::ObjectPool<RtpPacket::RtpPacketBuffer> RtpPacketBufferPool;
-
 	/* Class methods. */
 
-	RtpPacket::SharedPtr RtpPacket::Parse(const uint8_t* data, size_t len)
+	RtpPacket* RtpPacket::Parse(const uint8_t* data, size_t len)
 	{
 		MS_TRACE();
 
@@ -121,10 +117,10 @@ namespace RTC
 		           payloadLength + size_t{ payloadPadding },
 		  "packet's computed size does not match received size");
 
-		auto* packet = RtpPacketPool.Allocate();
-		new (packet) RtpPacket(header, headerExtension, payload, payloadLength, payloadPadding, len);
+		auto* packet =
+		  new RtpPacket(header, headerExtension, payload, payloadLength, payloadPadding, len);
 
-		return SharedPtr(packet);
+		return packet;
 	}
 
 	/* Instance methods. */
@@ -148,44 +144,9 @@ namespace RTC
 		ParseExtensions();
 	}
 
-	void RtpPacket::IncRefCount()
-	{
-		MS_ASSERT(
-		  this->referenceCount > 0, "Can only increase reference count for packets that are still alive");
-
-		this->referenceCount++;
-	}
-
-	void RtpPacket::DecRefCount()
-	{
-		MS_ASSERT(
-		  this->referenceCount > 0, "Can only decrease reference count for packets that are still alive");
-
-		this->referenceCount--;
-
-		if (this->referenceCount == 0)
-			ReturnIntoPool(this);
-	}
-
-	void RtpPacket::ReturnIntoPool(RtpPacket* packet)
-	{
-		if (packet)
-		{
-			packet->~RtpPacket();
-			RtpPacketPool.Return(packet);
-		}
-	}
-
 	RtpPacket::~RtpPacket()
 	{
 		MS_TRACE();
-
-		if (this->buffer)
-		{
-			this->buffer->~array();
-			RtpPacketBufferPool.Return(this->buffer);
-			this->buffer = nullptr;
-		}
 	}
 
 	void RtpPacket::Dump() const
@@ -216,9 +177,11 @@ namespace RTC
 
 			if (HasOneByteExtensions())
 			{
-				for (const auto& extension : this->mapOneByteExtensions)
+				extIds.reserve(this->mapOneByteExtensions.size());
+
+				for (const auto& kv : this->mapOneByteExtensions)
 				{
-					extIds.push_back(std::to_string(extension->id));
+					extIds.push_back(std::to_string(kv.first));
 				}
 			}
 			else
@@ -417,7 +380,7 @@ namespace RTC
 		this->videoOrientationExtensionId  = 0u;
 
 		// Clear the One-Byte and Two-Bytes extension elements maps.
-		std::fill(std::begin(this->mapOneByteExtensions), std::end(this->mapOneByteExtensions), nullptr);
+		this->mapOneByteExtensions.clear();
 		this->mapTwoBytesExtensions.clear();
 
 		// If One-Byte is requested and the packet already has One-Byte extensions,
@@ -528,9 +491,8 @@ namespace RTC
 				if (extension.id == 0 || extension.id > 14 || extension.len == 0 || extension.len > 16)
 					continue;
 
-				// Store the One-Byte extension element in an array.
-				// `-1` because we have 14 elements total 0..=13 and `id` is in the range 1..=14
-				this->mapOneByteExtensions[extension.id - 1] = reinterpret_cast<OneByteExtension*>(ptr);
+				// Store the One-Byte extension element in the map.
+				this->mapOneByteExtensions[extension.id] = reinterpret_cast<OneByteExtension*>(ptr);
 
 				*ptr = (extension.id << 4) | ((extension.len - 1) & 0x0F);
 				++ptr;
@@ -613,12 +575,12 @@ namespace RTC
 		}
 		else if (HasOneByteExtensions())
 		{
-			// `-1` because we have 14 elements total 0..=13 and `id` is in the range 1..=14
-			auto* extension = this->mapOneByteExtensions[id - 1];
+			auto it = this->mapOneByteExtensions.find(id);
 
-			if (!extension)
+			if (it == this->mapOneByteExtensions.end())
 				return false;
 
+			auto* extension = it->second;
 			auto currentLen = extension->len + 1;
 
 			// Fill with 0's if new length is minor.
@@ -670,14 +632,11 @@ namespace RTC
 		SetPayloadPaddingFlag(false);
 	}
 
-	RtpPacket::SharedPtr RtpPacket::Clone() const
+	RtpPacket* RtpPacket::Clone(const uint8_t* buffer) const
 	{
 		MS_TRACE();
 
-		auto* buffer = RtpPacketBufferPool.Allocate();
-		new (buffer) RtpPacketBuffer();
-
-		auto* ptr = const_cast<uint8_t*>(buffer->data());
+		auto* ptr = const_cast<uint8_t*>(buffer);
 		size_t numBytes{ 0 };
 
 		// Copy the minimum header.
@@ -730,9 +689,10 @@ namespace RTC
 			ptr += size_t{ this->payloadPadding };
 		}
 
+		MS_ASSERT(static_cast<size_t>(ptr - buffer) == this->size, "ptr - buffer == this->size");
+
 		// Create the new RtpPacket instance and return it.
-		auto* packet = RtpPacketPool.Allocate();
-		new (packet) RtpPacket(
+		auto* packet = new RtpPacket(
 		  newHeader, newHeaderExtension, newPayload, this->payloadLength, this->payloadPadding, this->size);
 
 		// Keep already set extension ids.
@@ -745,12 +705,8 @@ namespace RTC
 		packet->frameMarkingExtensionId      = this->frameMarkingExtensionId;
 		packet->ssrcAudioLevelExtensionId    = this->ssrcAudioLevelExtensionId;
 		packet->videoOrientationExtensionId  = this->videoOrientationExtensionId;
-		// Clone payload descriptor handler.
-		packet->payloadDescriptorHandler = this->payloadDescriptorHandler;
-		// Store allocated buffer.
-		packet->buffer = buffer;
 
-		return SharedPtr(packet);
+		return packet;
 	}
 
 	// NOTE: The caller must ensure that the buffer/memmory of the packet has
@@ -902,7 +858,7 @@ namespace RTC
 		if (HasOneByteExtensions())
 		{
 			// Clear the One-Byte extension elements map.
-			std::fill(std::begin(this->mapOneByteExtensions), std::end(this->mapOneByteExtensions), nullptr);
+			this->mapOneByteExtensions.clear();
 
 			uint8_t* extensionStart = reinterpret_cast<uint8_t*>(this->headerExtension) + 4;
 			uint8_t* extensionEnd   = extensionStart + GetHeaderExtensionLength();
@@ -929,9 +885,8 @@ namespace RTC
 						break;
 					}
 
-					// Store the One-Byte extension element in an array.
-					// `-1` because we have 14 elements total 0..=13 and `id` is in the range 1..=14
-					this->mapOneByteExtensions[id - 1] = reinterpret_cast<OneByteExtension*>(ptr);
+					// Store the One-Byte extension element in the map.
+					this->mapOneByteExtensions[id] = reinterpret_cast<OneByteExtension*>(ptr);
 
 					ptr += (1 + len);
 				}

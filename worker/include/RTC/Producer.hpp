@@ -12,6 +12,7 @@
 #include "RTC/RtpHeaderExtensionIds.hpp"
 #include "RTC/RtpPacket.hpp"
 #include "RTC/RtpStreamRecv.hpp"
+#include <map>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
@@ -54,7 +55,7 @@ namespace RTC
 	private:
 		struct RtpMapping
 		{
-			absl::flat_hash_map<uint8_t, uint8_t> codecs;
+			std::map<uint8_t, uint8_t> codecs;
 			std::vector<RtpEncodingMapping> encodings;
 		};
 
@@ -112,7 +113,7 @@ namespace RTC
 		{
 			return this->paused;
 		}
-		const absl::flat_hash_map<RTC::RtpStreamRecv*, uint32_t>& GetRtpStreams()
+		const std::map<RTC::RtpStreamRecv*, uint32_t>& GetRtpStreams()
 		{
 			return this->mapRtpStreamMappedSsrc;
 		}
@@ -123,7 +124,7 @@ namespace RTC
 		ReceiveRtpPacketResult ReceiveRtpPacket(RTC::RtpPacket* packet);
 		void ReceiveRtcpSenderReport(RTC::RTCP::SenderReport* report);
 		void ReceiveRtcpXrDelaySinceLastRr(RTC::RTCP::DelaySinceLastRr::SsrcInfo* ssrcInfo);
-		RTC::RTCP::CompoundPacket::UniquePtr GetRtcp(uint64_t nowMs);
+		void GetRtcp(RTC::RTCP::CompoundPacket* packet, uint64_t nowMs);
 		void RequestKeyFrame(uint32_t mappedSsrc);
 
 	private:
@@ -160,7 +161,7 @@ namespace RTC
 		// Passed by argument.
 		RTC::Producer::Listener* listener{ nullptr };
 		// Allocated by this.
-		absl::flat_hash_map<uint32_t, RTC::RtpStreamRecv*> mapSsrcRtpStream;
+		std::map<uint32_t, RTC::RtpStreamRecv*> mapSsrcRtpStream;
 		RTC::KeyFrameRequestManager* keyFrameRequestManager{ nullptr };
 		// Others.
 		RTC::Media::Kind kind;
@@ -169,9 +170,9 @@ namespace RTC
 		struct RtpMapping rtpMapping;
 		std::vector<RTC::RtpStreamRecv*> rtpStreamByEncodingIdx;
 		std::vector<uint8_t> rtpStreamScores;
-		absl::flat_hash_map<uint32_t, RTC::RtpStreamRecv*> mapRtxSsrcRtpStream;
-		absl::flat_hash_map<RTC::RtpStreamRecv*, uint32_t> mapRtpStreamMappedSsrc;
-		absl::flat_hash_map<uint32_t, uint32_t> mapMappedSsrcSsrc;
+		std::map<uint32_t, RTC::RtpStreamRecv*> mapRtxSsrcRtpStream;
+		std::map<RTC::RtpStreamRecv*, uint32_t> mapRtpStreamMappedSsrc;
+		std::map<uint32_t, uint32_t> mapMappedSsrcSsrc;
 		struct RTC::RtpHeaderExtensionIds rtpHeaderExtensionIds;
 		bool paused{ false };
 		RTC::RtpPacket* currentRtpPacket{ nullptr };

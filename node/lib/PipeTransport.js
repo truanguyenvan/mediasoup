@@ -1,6 +1,19 @@
 "use strict";
+var __classPrivateFieldSet = (this && this.__classPrivateFieldSet) || function (receiver, privateMap, value) {
+    if (!privateMap.has(receiver)) {
+        throw new TypeError("attempted to set private field on non-instance");
+    }
+    privateMap.set(receiver, value);
+    return value;
+};
+var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (receiver, privateMap) {
+    if (!privateMap.has(receiver)) {
+        throw new TypeError("attempted to get private field on non-instance");
+    }
+    return privateMap.get(receiver);
+};
+var _data;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PipeTransport = void 0;
 const uuid_1 = require("uuid");
 const Logger_1 = require("./Logger");
 const ortc = require("./ortc");
@@ -8,8 +21,6 @@ const Transport_1 = require("./Transport");
 const Consumer_1 = require("./Consumer");
 const logger = new Logger_1.Logger('PipeTransport');
 class PipeTransport extends Transport_1.Transport {
-    // PipeTransport data.
-    #data;
     /**
      * @private
      * @emits sctpstatechange - (sctpState: SctpState)
@@ -17,41 +28,42 @@ class PipeTransport extends Transport_1.Transport {
      */
     constructor(params) {
         super(params);
+        // PipeTransport data.
+        _data.set(this, void 0);
         logger.debug('constructor()');
         const { data } = params;
-        this.#data =
-            {
-                tuple: data.tuple,
-                sctpParameters: data.sctpParameters,
-                sctpState: data.sctpState,
-                rtx: data.rtx,
-                srtpParameters: data.srtpParameters
-            };
+        __classPrivateFieldSet(this, _data, {
+            tuple: data.tuple,
+            sctpParameters: data.sctpParameters,
+            sctpState: data.sctpState,
+            rtx: data.rtx,
+            srtpParameters: data.srtpParameters
+        });
         this.handleWorkerNotifications();
     }
     /**
      * Transport tuple.
      */
     get tuple() {
-        return this.#data.tuple;
+        return __classPrivateFieldGet(this, _data).tuple;
     }
     /**
      * SCTP parameters.
      */
     get sctpParameters() {
-        return this.#data.sctpParameters;
+        return __classPrivateFieldGet(this, _data).sctpParameters;
     }
     /**
      * SCTP state.
      */
     get sctpState() {
-        return this.#data.sctpState;
+        return __classPrivateFieldGet(this, _data).sctpState;
     }
     /**
      * SRTP parameters.
      */
     get srtpParameters() {
-        return this.#data.srtpParameters;
+        return __classPrivateFieldGet(this, _data).srtpParameters;
     }
     /**
      * Observer.
@@ -74,8 +86,8 @@ class PipeTransport extends Transport_1.Transport {
     close() {
         if (this.closed)
             return;
-        if (this.#data.sctpState)
-            this.#data.sctpState = 'closed';
+        if (__classPrivateFieldGet(this, _data).sctpState)
+            __classPrivateFieldGet(this, _data).sctpState = 'closed';
         super.close();
     }
     /**
@@ -87,8 +99,8 @@ class PipeTransport extends Transport_1.Transport {
     routerClosed() {
         if (this.closed)
             return;
-        if (this.#data.sctpState)
-            this.#data.sctpState = 'closed';
+        if (__classPrivateFieldGet(this, _data).sctpState)
+            __classPrivateFieldGet(this, _data).sctpState = 'closed';
         super.routerClosed();
     }
     /**
@@ -110,7 +122,7 @@ class PipeTransport extends Transport_1.Transport {
         const reqData = { ip, port, srtpParameters };
         const data = await this.channel.request('transport.connect', this.internal, reqData);
         // Update data.
-        this.#data.tuple = data.tuple;
+        __classPrivateFieldGet(this, _data).tuple = data.tuple;
     }
     /**
      * Create a pipe Consumer.
@@ -127,8 +139,8 @@ class PipeTransport extends Transport_1.Transport {
         if (!producer)
             throw Error(`Producer with id "${producerId}" not found`);
         // This may throw.
-        const rtpParameters = ortc.getPipeConsumerRtpParameters(producer.consumableRtpParameters, this.#data.rtx);
-        const internal = { ...this.internal, consumerId: (0, uuid_1.v4)(), producerId };
+        const rtpParameters = ortc.getPipeConsumerRtpParameters(producer.consumableRtpParameters, __classPrivateFieldGet(this, _data).rtx);
+        const internal = { ...this.internal, consumerId: uuid_1.v4(), producerId };
         const reqData = {
             kind: producer.kind,
             rtpParameters,
@@ -159,7 +171,7 @@ class PipeTransport extends Transport_1.Transport {
                 case 'sctpstatechange':
                     {
                         const sctpState = data.sctpState;
-                        this.#data.sctpState = sctpState;
+                        __classPrivateFieldGet(this, _data).sctpState = sctpState;
                         this.safeEmit('sctpstatechange', sctpState);
                         // Emit observer event.
                         this.observer.safeEmit('sctpstatechange', sctpState);
@@ -182,3 +194,4 @@ class PipeTransport extends Transport_1.Transport {
     }
 }
 exports.PipeTransport = PipeTransport;
+_data = new WeakMap();

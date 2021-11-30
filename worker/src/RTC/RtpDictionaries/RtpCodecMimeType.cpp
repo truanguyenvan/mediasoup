@@ -11,17 +11,17 @@ namespace RTC
 	/* Class variables. */
 
 	// clang-format off
-	absl::flat_hash_map<std::string, RtpCodecMimeType::Type> RtpCodecMimeType::string2Type =
+	std::unordered_map<std::string, RtpCodecMimeType::Type> RtpCodecMimeType::string2Type =
 	{
 		{ "audio", RtpCodecMimeType::Type::AUDIO },
 		{ "video", RtpCodecMimeType::Type::VIDEO }
 	};
-	absl::flat_hash_map<RtpCodecMimeType::Type, std::string> RtpCodecMimeType::type2String =
+	std::map<RtpCodecMimeType::Type, std::string> RtpCodecMimeType::type2String =
 	{
 		{ RtpCodecMimeType::Type::AUDIO, "audio" },
 		{ RtpCodecMimeType::Type::VIDEO, "video" }
 	};
-	absl::flat_hash_map<std::string, RtpCodecMimeType::Subtype> RtpCodecMimeType::string2Subtype =
+	std::unordered_map<std::string, RtpCodecMimeType::Subtype> RtpCodecMimeType::string2Subtype =
 	{
 		// Audio codecs:
 		{ "opus",            RtpCodecMimeType::Subtype::OPUS            },
@@ -48,7 +48,7 @@ namespace RTC
 		{ "x-ulpfecuc",      RtpCodecMimeType::Subtype::X_ULPFECUC      },
 		{ "red",             RtpCodecMimeType::Subtype::RED             }
 	};
-	absl::flat_hash_map<RtpCodecMimeType::Subtype, std::string> RtpCodecMimeType::subtype2String =
+	std::map<RtpCodecMimeType::Subtype, std::string> RtpCodecMimeType::subtype2String =
 	{
 		// Audio codecs:
 		{ RtpCodecMimeType::Subtype::OPUS,            "opus"            },
