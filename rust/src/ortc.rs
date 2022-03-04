@@ -57,7 +57,7 @@ pub struct RtpMapping {
 pub enum RtpParametersError {
     /// Invalid codec apt parameter.
     #[error("Invalid codec apt parameter {0}")]
-    InvalidAptParameter(String),
+    InvalidAptParameter(Cow<'static, str>),
 }
 
 /// Error caused by invalid RTP capabilities.
@@ -74,7 +74,7 @@ pub enum RtpCapabilitiesError {
     CannotAllocate,
     /// Invalid codec apt parameter.
     #[error("Invalid codec apt parameter {0}")]
-    InvalidAptParameter(String),
+    InvalidAptParameter(Cow<'static, str>),
     /// Duplicated preferred payload type
     #[error("Duplicated preferred payload type {0}")]
     DuplicatedPreferredPayloadType(u8),
@@ -135,7 +135,7 @@ pub(crate) fn validate_rtp_parameters(
 fn validate_rtp_codec_parameters(codec: &RtpCodecParameters) -> Result<(), RtpParametersError> {
     for (key, value) in codec.parameters().iter() {
         // Specific parameters validation.
-        if key.as_str() == "apt" {
+        if key.as_ref() == "apt" {
             match value {
                 RtpCodecParametersParametersValue::Number(_) => {
                     // Good
@@ -154,7 +154,7 @@ fn validate_rtp_codec_parameters(codec: &RtpCodecParameters) -> Result<(), RtpPa
 fn validate_rtp_codec_capability(codec: &RtpCodecCapability) -> Result<(), RtpCapabilitiesError> {
     for (key, value) in codec.parameters().iter() {
         // Specific parameters validation.
-        if key.as_str() == "apt" {
+        if key.as_ref() == "apt" {
             match value {
                 RtpCodecParametersParametersValue::Number(_) => {
                     // Good
@@ -371,7 +371,7 @@ pub(crate) fn get_producer_rtp_parameters_mapping(
         // Search for the associated media codec.
         let associated_media_codec = rtp_parameters.codecs.iter().find(|media_codec| {
             let media_codec_payload_type = media_codec.payload_type();
-            let codec_parameters_apt = codec.parameters().get(&"apt".to_string());
+            let codec_parameters_apt = codec.parameters().get("apt");
 
             match codec_parameters_apt {
                 Some(RtpCodecParametersParametersValue::Number(apt)) => {
@@ -391,7 +391,7 @@ pub(crate) fn get_producer_rtp_parameters_mapping(
                         return false;
                     }
 
-                    let cap_codec_parameters_apt = cap_codec.parameters().get(&"apt".to_string());
+                    let cap_codec_parameters_apt = cap_codec.parameters().get("apt");
                     match cap_codec_parameters_apt {
                         Some(RtpCodecParametersParametersValue::Number(apt)) => {
                             u32::from(cap_media_codec.preferred_payload_type()) == *apt
@@ -513,7 +513,7 @@ pub(crate) fn get_consumable_rtp_parameters(
                 return false;
             }
 
-            let cap_rtx_codec_parameters_apt = cap_rtx_codec.parameters().get(&"apt".to_string());
+            let cap_rtx_codec_parameters_apt = cap_rtx_codec.parameters().get("apt");
 
             match cap_rtx_codec_parameters_apt {
                 Some(RtpCodecParametersParametersValue::Number(apt)) => {
@@ -1020,7 +1020,7 @@ fn match_codecs(
                         .parameters
                         .get("profile-level-id")
                         .and_then(|p| match p {
-                            RtpCodecParametersParametersValue::String(s) => Some(s.as_str()),
+                            RtpCodecParametersParametersValue::String(s) => Some(s.as_ref()),
                             RtpCodecParametersParametersValue::Number(_) => None,
                         });
                 let profile_level_id_b =
@@ -1028,7 +1028,7 @@ fn match_codecs(
                         .parameters
                         .get("profile-level-id")
                         .and_then(|p| match p {
-                            RtpCodecParametersParametersValue::String(s) => Some(s.as_str()),
+                            RtpCodecParametersParametersValue::String(s) => Some(s.as_ref()),
                             RtpCodecParametersParametersValue::Number(_) => None,
                         });
 

@@ -20,12 +20,16 @@ namespace RTC
 	public:
 		struct StorageItem
 		{
+			void Dump() const;
+
 			// Original packet.
 			RTC::RtpPacket::SharedPtr originalPacket{ nullptr };
-			// Correct SSRC since original packet will have original ssrc.
+			// Correct SSRC since original packet may not have the same.
 			uint32_t ssrc{ 0 };
-			// Correct sequence number since original packet will have original sequence number.
+			// Correct sequence number since original packet may not have the same.
 			uint16_t sequenceNumber{ 0 };
+			// Correct timestamp since original packet may not have the same.
+			uint32_t timestamp{ 0 };
 			// Cloned packet.
 			RTC::RtpPacket::SharedPtr clonedPacket{ nullptr };
 			// Last time this packet was resent.
@@ -45,10 +49,13 @@ namespace RTC
 		public:
 			~StorageItemBuffer();
 
-			StorageItem* Get(uint16_t seq);
+			StorageItem* GetFirst() const;
+			StorageItem* Get(uint16_t seq) const;
+			size_t GetBufferSize() const;
 			bool Insert(uint16_t seq, StorageItem* storageItem);
-			bool Remove(uint16_t seq);
+			void RemoveFirst();
 			void Clear();
+			void Dump();
 
 		private:
 			uint16_t startSeq{ 0 };
@@ -65,7 +72,7 @@ namespace RTC
 
 		void FillJsonStats(json& jsonObject) override;
 		void SetRtx(uint8_t payloadType, uint32_t ssrc) override;
-		bool ReceivePacket(RTC::RtpPacket* packet, RTC::RtpPacket::SharedPtr* clonedPacket);
+		bool ReceivePacket(RTC::RtpPacket* packet, RTC::RtpPacket::SharedPtr& clonedPacket);
 		void ReceiveNack(RTC::RTCP::FeedbackRtpNackPacket* nackPacket);
 		void ReceiveKeyFrameRequest(RTC::RTCP::FeedbackPs::MessageType messageType);
 		void ReceiveRtcpReceiverReport(RTC::RTCP::ReceiverReport* report);
@@ -82,7 +89,8 @@ namespace RTC
 		uint32_t GetLayerBitrate(uint64_t nowMs, uint8_t spatialLayer, uint8_t temporalLayer) override;
 
 	private:
-		void StorePacket(RTC::RtpPacket* packet, RTC::RtpPacket::SharedPtr* clonedPacket);
+		void StorePacket(const RTC::RtpPacket* packet, RTC::RtpPacket::SharedPtr& clonedPacket);
+		void ClearOldPackets(const RtpPacket* packet);
 		void ClearBuffer();
 		void FillRetransmissionContainer(uint16_t seq, uint16_t bitmask);
 		void UpdateScore(RTC::RTCP::ReceiverReport* report);
@@ -91,11 +99,9 @@ namespace RTC
 		uint32_t lostPriorScore{ 0u }; // Packets lost at last interval for score calculation.
 		uint32_t sentPriorScore{ 0u }; // Packets sent at last interval for score calculation.
 		StorageItemBuffer storageItemBuffer;
-		uint16_t bufferStartSeq{ 0u };
 		std::string mid;
 		bool useNack;
 		uint32_t retransmissionBufferSize;
-		bool firstPacket{ true };
 		uint16_t rtxSeq{ 0u };
 		RTC::RtpDataCounter transmissionCounter;
 	};
