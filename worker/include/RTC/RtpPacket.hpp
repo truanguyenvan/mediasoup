@@ -23,6 +23,7 @@ namespace RTC
 	{
 	public:
 		using RtpPacketBuffer = std::array<uint8_t, MtuSize + 100>;
+		using SharedPtr       = std::shared_ptr<RtpPacket>;
 
 		/* Struct for RTP header. */
 		struct Header
@@ -195,11 +196,7 @@ namespace RTC
 				return ptr;
 			}
 
-		private:
-			RtpPacket* ptr;
-		};
-
-		static RtpPacket::SharedPtr Parse(const uint8_t* data, size_t len);
+		static SharedPtr Parse(const uint8_t* data, size_t len);
 
 	private:
 		RtpPacket(
@@ -210,7 +207,6 @@ namespace RTC
 		  uint8_t payloadPadding,
 		  size_t size);
 
-		// Use `RtpPacket::DecRefCount()` instead
 		~RtpPacket();
 
 	public:
@@ -658,7 +654,7 @@ namespace RTC
 			return this->payloadDescriptorHandler->IsKeyFrame();
 		}
 
-		RtpPacket::SharedPtr Clone() const;
+		SharedPtr Clone() const;
 
 		void RtxEncode(uint8_t payloadType, uint32_t ssrc, uint16_t seq);
 
@@ -676,16 +672,8 @@ namespace RTC
 		void ShiftPayload(size_t payloadOffset, size_t shift, bool expand = true);
 
 	private:
-		friend class SharedPtr;
+		friend SharedPtr;
 
-		// Increase reference count for the packet.
-		void IncRefCount();
-
-		// Decrease reference count for the packet, packet will be removed when reference count reaches zero.
-		void DecRefCount();
-
-		// Return packet into object pool for future reuse of memory allocation.
-		static void ReturnIntoPool(RtpPacket* packet);
 		void ParseExtensions();
 
 	private:
@@ -716,7 +704,6 @@ namespace RTC
 		// Buffer where this packet is allocated, can be `nullptr` if packet was parsed from externally
 		// provided buffer.
 		RtpPacketBuffer* buffer{ nullptr };
-		size_t referenceCount{ 1 };
 	};
 } // namespace RTC
 

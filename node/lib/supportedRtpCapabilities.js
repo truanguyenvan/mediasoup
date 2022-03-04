@@ -360,6 +360,20 @@ const supportedRtpCapabilities = {
             preferredId: 12,
             preferredEncrypt: false,
             direction: 'sendrecv'
+        },
+        {
+            kind: 'video',
+            uri: 'http://www.webrtc.org/experiments/rtp-hdrext/abs-capture-time',
+            preferredId: 13,
+            preferredEncrypt: false,
+            direction: 'sendrecv'
+        },
+        {
+            kind: 'audio',
+            uri: 'http://www.webrtc.org/experiments/rtp-hdrext/abs-capture-time',
+            preferredId: 13,
+            preferredEncrypt: false,
+            direction: 'sendrecv'
         }
     ]
 };

@@ -20,7 +20,7 @@ namespace RTC
 		MS_TRACE();
 
 		if (!RtpPacket::IsRtp(data, len))
-			return nullptr;
+			return SharedPtr(nullptr);
 
 		auto* ptr = const_cast<uint8_t*>(data);
 
@@ -42,7 +42,7 @@ namespace RTC
 			{
 				MS_WARN_TAG(rtp, "not enough space for the announced CSRC list, packet discarded");
 
-				return nullptr;
+				return SharedPtr(nullptr);
 			}
 			ptr += csrcListSize;
 		}
@@ -58,7 +58,7 @@ namespace RTC
 			{
 				MS_WARN_TAG(rtp, "not enough space for the announced header extension, packet discarded");
 
-				return nullptr;
+				return SharedPtr(nullptr);
 			}
 
 			headerExtension = reinterpret_cast<HeaderExtension*>(ptr);
@@ -73,7 +73,7 @@ namespace RTC
 				MS_WARN_TAG(
 				  rtp, "not enough space for the announced header extension value, packet discarded");
 
-				return nullptr;
+				return SharedPtr(nullptr);
 			}
 			ptr += 4 + extensionValueSize;
 		}
@@ -93,7 +93,7 @@ namespace RTC
 			{
 				MS_WARN_TAG(rtp, "padding bit is set but no space for a padding byte, packet discarded");
 
-				return nullptr;
+				return SharedPtr(nullptr);
 			}
 
 			payloadPadding = data[len - 1];
@@ -101,7 +101,7 @@ namespace RTC
 			{
 				MS_WARN_TAG(rtp, "padding byte cannot be 0, packet discarded");
 
-				return nullptr;
+				return SharedPtr(nullptr);
 			}
 
 			if (payloadLength < size_t{ payloadPadding })
@@ -111,7 +111,7 @@ namespace RTC
 				  "number of padding octets is greater than available space for payload, packet "
 				  "discarded");
 
-				return nullptr;
+				return SharedPtr(nullptr);
 			}
 			payloadLength -= size_t{ payloadPadding };
 		}
@@ -124,7 +124,18 @@ namespace RTC
 		auto* packet = RtpPacketPool.Allocate();
 		new (packet) RtpPacket(header, headerExtension, payload, payloadLength, payloadPadding, len);
 
-		return SharedPtr(packet);
+		SharedPtr shared(
+		  packet,
+		  /*Deleter*/
+		  [](RtpPacket* packet)
+		  {
+			  // Call destructor manually since memory was pre-allocated upfront.
+			  packet->~RtpPacket();
+			  // Return packet into object pool for future reuse of memory allocation.
+			  RtpPacketPool.Return(packet);
+		  });
+
+		return shared;
 	}
 
 	/* Instance methods. */
@@ -735,6 +746,17 @@ namespace RTC
 		new (packet) RtpPacket(
 		  newHeader, newHeaderExtension, newPayload, this->payloadLength, this->payloadPadding, this->size);
 
+		SharedPtr shared(
+		  packet,
+		  /*Deleter*/
+		  [](RtpPacket* packet)
+		  {
+			  // Call destructor manually since memory was pre-allocated upfront.
+			  packet->~RtpPacket();
+			  // Return packet into object pool for future reuse of memory allocation.
+			  RtpPacketPool.Return(packet);
+		  });
+
 		// Keep already set extension ids.
 		packet->midExtensionId               = this->midExtensionId;
 		packet->ridExtensionId               = this->ridExtensionId;
@@ -750,7 +772,7 @@ namespace RTC
 		// Store allocated buffer.
 		packet->buffer = buffer;
 
-		return SharedPtr(packet);
+		return shared;
 	}
 
 	// NOTE: The caller must ensure that the buffer/memmory of the packet has
